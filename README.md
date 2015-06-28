@@ -1,5 +1,3 @@
-# Project-PIC
-~le Cornomentro~
 // LCD module connections
 sbit LCD_RS at RE2_bit;
 sbit LCD_EN at RE1_bit;
@@ -32,57 +30,85 @@ void LimparTela(){
   Lcd_Out(1,1,"VLT: ");              // Write text in first row
   Lcd_Out(2,1,"TEMPO: ");            // Write text in first row
 
-}
 
-
-
-
-
-char miliSegundo_txt[2];
-void MostrarMilisegundos(){
-     int milisegundo = 0;
-     
-       // while (milisegundo < 10) {
-                          
-                          milisegundo++;
-                          /*WordToStr(milisegundo,miliSegundo_txt);
-                          Lcd_Out(1,8,miliSegundo_txt);
-                          //MostrarCentesimoSegundo(milisegundo);
-                          //WaitForMiliSec(1);
-                          InitTimer0();
-                          InterruptMilisecond();
-                          */
-        //}
 }
 
 char segundo_txt[2];
 void MostrarSegundo(int seg){
 
     WordToStr(seg,segundo_txt);
-    //MostrarMilisegundos();
-    Lcd_out(2,8,segundo_txt);
-    Delay_ms(100);
-    
+    Lcd_out(2,7,segundo_txt);
+
 }
 
-  int segundo = 0;
+char miliSegundo_txt[2];
+int segundo = 0;
+void MostrarMilisegundos(int milisegundo){
+
+
+           WordToStr(milisegundo,miliSegundo_txt);
+           Lcd_out(2,12,miliSegundo_txt);
+           Lcd_Out(2,13,".");
+           milisegundo++;
+
+}
+
+int mili = 0;
+void esperaMilisegundo(){
+
+
+         //Timer1 Registers Prescaler= 8 - TMR1 Preset = 40536 - Freq = 10.00 Hz - Period = 0.100000 seconds
+         T1CON.T1CKPS1 = 1;   // bits 5-4  Prescaler Rate Select bits
+         T1CON.T1CKPS0 = 1;   // bit 4
+         T1CON.T1OSCEN = 1;   // bit 3 Timer1 Oscillator Enable Control bit 1 = on
+         T1CON.T1SYNC = 1;    // bit 2 Timer1 External Clock Input Synchronization Control bit...1 = Do not synchronize external clock input
+         T1CON.TMR1CS = 0;    // bit 1 Timer1 Clock Source Select bit...0 = Internal clock (FOSC/4)
+         T1CON.TMR1ON = 1;    // bit 0 enables timer
+         TMR1H = 158;         // preset for timer1 MSB register
+         TMR1L = 88;          // preset for timer1 LSB register
+         mili++;
+         if (mili >= 100) {
+            mili = 0;
+         }
+         MostrarMilisegundos(mili);
+         }
+
+
+
+int cont = 0;
 void main(){
+   
    TRISB.RB2 = 1;
    PORTB.RB2 = 1;
    TRISB.RB0 = 1;
    PORTB.RB0 = 1;
    ADCON1 = 0x07;   //0x8E or 0x07
-
    LimparTela();
 
     while(1){
 
-          /*if (PORTB.RB2 == 0 && PORTB.RB0 == 0){
+          // Ao apertar RB0 Limpa tela e Reinicia o ~Cornometro~
+          if (PORTB.RB0 == 0){
             LimparTela();
-            }*/
-         segundo = segundo + 1;
-         MostrarSegundo(segundo);
+            segundo = 0;
+            delay_ms(100);
+            }
+            
+          if (PORTB.RB1 == 0){
+            LimparTela();
+            segundo = 0;
+            delay_ms(100);
+            }
 
+         esperaMilisegundo();
+         cont++;
+
+         
+         if (cont == 100){
+            segundo++;
+            MostrarSegundo(segundo);
+            cont=0;
+            }
 
          }
  }

@@ -17,21 +17,64 @@ sbit LCD_D7_Direction at TRISD7_bit;
 
 void LimparTela(){
 
-  Lcd_Init();                        // Initialize LCD
-
   //Visão do Display
   //----------------//
   //VLT: 99.99-99.99//
   //TEMPO : 99 . 99 //
   //----------------//
-
+  Lcd_Init();                        // Initialize LCD
   Lcd_Cmd(_LCD_CLEAR);               // Clear display
   Lcd_Cmd(_LCD_CURSOR_OFF);          // Cursor off
   Lcd_Out(1,1,"VLT: ");              // Write text in first row
   Lcd_Out(2,1,"TEMPO: ");            // Write text in first row
 
+}
+
+
+int pausar = 0;
+int segundo = 0;
+int mili = 0;
+int mili1, segundo1, mili2, segundo2;
+
+void interrupt_1(void){
+
+ if (PORTB.RB1 == 0 || PORTB.RB2 == 0){
+
+         while(pausar < 1){
+
+         if (PORTB.RB2 == 0){
+            pausar = 2;
+            INTCON.INTF = 0;                   // CLEAR THE INTERRUPT FLAG
+             }
+             INTCON.INTF = 0;                      // CLEAR THE INTERRUPT FLAG
+             }
+            }
+
+      pausar = 0;
+}
+char mili1_txt[2];
+void mostrarTempos(){
+
+   WordToStr(mili1,mili1_txt);
+    Lcd_out(1,7,mili1_txt);
+}
+void interrupt(void) {                      // INTERRUPT SERVICE ROUTINE START
+
+
+        interrupt_1();
+
+            
+      if (PORTB.RB1 == 0){
+           mili1 = mili;
+           segundo1 = segundo;
+           mili2 = mili1;
+           segundo2 = segundo1;
+           
+           segundo = 0;
+           }
 
 }
+
 
 char segundo_txt[2];
 void MostrarSegundo(int seg){
@@ -42,9 +85,7 @@ void MostrarSegundo(int seg){
 }
 
 char miliSegundo_txt[2];
-int segundo = 0;
 void MostrarMilisegundos(int milisegundo){
-
 
            WordToStr(milisegundo,miliSegundo_txt);
            Lcd_out(2,12,miliSegundo_txt);
@@ -53,7 +94,6 @@ void MostrarMilisegundos(int milisegundo){
 
 }
 
-int mili = 0;
 void esperaMilisegundo(){
 
 
@@ -69,45 +109,42 @@ void esperaMilisegundo(){
          mili++;
          if (mili >= 100) {
             mili = 0;
+            segundo++;
          }
          MostrarMilisegundos(mili);
-         }
-
-
-
+      }
+      
 int cont = 0;
 void main(){
    
-   TRISB.RB2 = 1;
-   PORTB.RB2 = 1;
-   TRISB.RB0 = 1;
-   PORTB.RB0 = 1;
+   TRISB = 0b11111111;
+   PORTB = 0b11111111;
+
    ADCON1 = 0x07;   //0x8E or 0x07
    LimparTela();
+   
+   INTCON.GIE = 1;                           // Habilita os interruptores
+   INTCON.INTE = 1;                          // Habilita o RB0 como interruptor externo
+   INTCON.PEIE = 0;                          // Disabilita os interruptores externos
+   OPTION_REG.INTEDG = 0;                    // Interrupção "FALLING" EDGE
 
     while(1){
 
-          // Ao apertar RB0 Limpa tela e Reinicia o ~Cornometro~
-          if (PORTB.RB0 == 0){
-            LimparTela();
-            segundo = 0;
-            delay_ms(100);
-            }
-            
+          // Ao apertar RB1 Limpa tela e Reinicia o ~Cornometro~
           if (PORTB.RB1 == 0){
-            LimparTela();
-            segundo = 0;
-            delay_ms(100);
-            }
+           LimparTela();
+           segundo = 0;
+           delay_ms(1000);
+           }
+
 
          esperaMilisegundo();
          cont++;
 
-         
          if (cont == 100){
-            segundo++;
             MostrarSegundo(segundo);
-            cont=0;
+            cont = 0;
+            mostrarTempos();
             }
 
          }

@@ -44,19 +44,20 @@ int segundo2 = 0;
 
 char mili1_txt[2];
 char segundo1_txt[2];
+char segundo2_txt[2];
 void mostrarTempos(){
     
 
-    mili1_txt[10] = EEPROM_Read(1);
-    segundo1_txt[10] =  EEPROM_Read(2);
-    Ltrim(mili1_txt);
-    Ltrim(segundo1_txt);
+    mili1_txt[10] = EEPROM_Read(1);          //Pega os milisegundos da eeprom
+    segundo1_txt[100] =  EEPROM_Read(256);  //Pega os segundos da eeprom
 
+    Ltrim(mili1_txt);    // Retira os espaços
+    Ltrim(segundo1_txt); // Retira os espaços
 
     Lcd_out(1,6,segundo1_txt);
-    Lcd_out(1,8,".");
+    Lcd_Chr_CP('.');
     Lcd_out(1,10,mili1_txt);
-    //Lcd_out(1,10,segundo1_txt);
+
 }
 
 void interrupt_1(void){
@@ -99,6 +100,7 @@ void MostrarSegundo(int seg){
 
     WordToStr(seg,segundo_txt);
     Lcd_out(2,7,segundo_txt);
+
 
 }
 
@@ -154,10 +156,14 @@ void main(){
 
            }
            if (PORTB.RB3 == 0){
+           EEPROM_Write(256,segundo1);
            EEPROM_Write(1,mili1);
-           EEPROM_Write(1,segundo1);
-            //Edata[3] = temp;
+           
+           LimparTela();
+           segundo = 0;
+           
            mostrarTempos();
+
            }
 
          esperaMilisegundo();

@@ -14,10 +14,11 @@ sbit LCD_D6_Direction at TRISD6_bit;
 sbit LCD_D7_Direction at TRISD7_bit;
 // End LCD module connections
 
+unsigned int ADD; // EEPROM
 
 void LimparTela(){
 
-  //Visão do Display
+  //VisÃ£o do Display
   //----------------//
   //VLT: 99.99-99.99//
   //TEMPO : 99 . 99 //
@@ -27,6 +28,7 @@ void LimparTela(){
   Lcd_Cmd(_LCD_CURSOR_OFF);          // Cursor off
   Lcd_Out(1,1,"VLT: ");              // Write text in first row
   Lcd_Out(2,1,"TEMPO: ");            // Write text in first row
+ // Lcd_Out(2,12,"-");            // Write text in first row
 
 }
 
@@ -34,42 +36,58 @@ void LimparTela(){
 int pausar = 0;
 int segundo = 0;
 int mili = 0;
-int mili1, segundo1, mili2, segundo2;
+int mili1 = 0;
+int segundo1 = 0;
+int mili2 = 0;
+int segundo2 = 0;
+
+
+char mili1_txt[2];
+char segundo1_txt[2];
+void mostrarTempos(){
+    
+
+    mili1_txt[10] = EEPROM_Read(1);
+    segundo1_txt[10] =  EEPROM_Read(2);
+    Ltrim(mili1_txt);
+    Ltrim(segundo1_txt);
+
+
+    Lcd_out(1,6,segundo1_txt);
+    Lcd_out(1,8,".");
+    Lcd_out(1,10,mili1_txt);
+    //Lcd_out(1,10,segundo1_txt);
+}
 
 void interrupt_1(void){
 
- if (PORTB.RB1 == 0 || PORTB.RB2 == 0){
+	if (PORTB.RB1 == 0 || PORTB.RB2 == 0){
 
-         while(pausar < 1){
+		while(pausar < 1){
 
-         if (PORTB.RB2 == 0){
-            pausar = 2;
-            INTCON.INTF = 0;                   // CLEAR THE INTERRUPT FLAG
-             }
-             INTCON.INTF = 0;                      // CLEAR THE INTERRUPT FLAG
-             }
-            }
+			if (PORTB.RB2 == 0){
+				pausar = 2;
+				INTCON.INTF = 0;        // CLEAR THE INTERRUPT FLAG
+			}
+		INTCON.INTF = 0;                      // CLEAR THE INTERRUPT FLAG
+		}
+	}
 
       pausar = 0;
 }
-char mili1_txt[2];
-void mostrarTempos(){
 
-   WordToStr(mili1,mili1_txt);
-    Lcd_out(1,7,mili1_txt);
-}
 void interrupt(void) {                      // INTERRUPT SERVICE ROUTINE START
 
 
         interrupt_1();
 
-            
+
       if (PORTB.RB1 == 0){
            mili1 = mili;
            segundo1 = segundo;
            mili2 = mili1;
            segundo2 = segundo1;
-           
+
            segundo = 0;
            }
 
@@ -89,13 +107,11 @@ void MostrarMilisegundos(int milisegundo){
 
            WordToStr(milisegundo,miliSegundo_txt);
            Lcd_out(2,12,miliSegundo_txt);
-           Lcd_Out(2,13,".");
            milisegundo++;
 
 }
 
 void esperaMilisegundo(){
-
 
          //Timer1 Registers Prescaler= 8 - TMR1 Preset = 40536 - Freq = 10.00 Hz - Period = 0.100000 seconds
          T1CON.T1CKPS1 = 1;   // bits 5-4  Prescaler Rate Select bits
@@ -112,21 +128,22 @@ void esperaMilisegundo(){
             segundo++;
          }
          MostrarMilisegundos(mili);
+
       }
-      
+
 int cont = 0;
 void main(){
-   
+
    TRISB = 0b11111111;
    PORTB = 0b11111111;
 
    ADCON1 = 0x07;   //0x8E or 0x07
    LimparTela();
-   
+
    INTCON.GIE = 1;                           // Habilita os interruptores
    INTCON.INTE = 1;                          // Habilita o RB0 como interruptor externo
    INTCON.PEIE = 0;                          // Disabilita os interruptores externos
-   OPTION_REG.INTEDG = 0;                    // Interrupção "FALLING" EDGE
+   OPTION_REG.INTEDG = 0;                    // InterrupÃ§Ã£o "FALLING" EDGE
 
     while(1){
 
@@ -134,9 +151,14 @@ void main(){
           if (PORTB.RB1 == 0){
            LimparTela();
            segundo = 0;
-           delay_ms(1000);
-           }
 
+           }
+           if (PORTB.RB3 == 0){
+           EEPROM_Write(1,mili1);
+           EEPROM_Write(1,segundo1);
+            //Edata[3] = temp;
+           mostrarTempos();
+           }
 
          esperaMilisegundo();
          cont++;
@@ -144,7 +166,7 @@ void main(){
          if (cont == 100){
             MostrarSegundo(segundo);
             cont = 0;
-            mostrarTempos();
+
             }
 
          }

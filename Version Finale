@@ -1,0 +1,175 @@
+// LCD module connections
+sbit LCD_RS at RE2_bit;
+sbit LCD_EN at RE1_bit;
+sbit LCD_D4 at RD4_bit;
+sbit LCD_D5 at RD5_bit;
+sbit LCD_D6 at RD6_bit;
+sbit LCD_D7 at RD7_bit;
+
+sbit LCD_RS_Direction at TRISE2_bit;
+sbit LCD_EN_Direction at TRISE1_bit;
+sbit LCD_D4_Direction at TRISD4_bit;
+sbit LCD_D5_Direction at TRISD5_bit;
+sbit LCD_D6_Direction at TRISD6_bit;
+sbit LCD_D7_Direction at TRISD7_bit;
+// End LCD module connections
+
+void LimparTela(){
+
+  //Visao do Display
+  //----------------//
+  //VOLTA: 99.99    //
+  //TEMPO : 99 . 99 //
+  //----------------//
+  Lcd_Init();                        // Initialize LCD
+  Lcd_Cmd(_LCD_CLEAR);               // Clear display
+  Lcd_Cmd(_LCD_CURSOR_OFF);          // Cursor off
+  Lcd_Out(1,1,"VOLTA: ");              // Write text in first row
+  Lcd_Out(2,1,"TEMPO: ");            // Write text in first row
+
+  EEPROM_Write(256,0x00);            // Limpa a EEPROM
+  EEPROM_Write(1,0x00);              // Limpa a EEPROM
+
+}
+
+ // Variaveis Globais
+ 
+int pausar = 0;
+int cont = 0;
+int segundo = 0;
+int segundo1 = 0;
+int mili = 0;
+int mili1 = 0;
+char mili1_txt[2];
+char miliSegundo_txt[2];
+char segundo_txt[2];
+char segundo1_txt[2];
+
+
+void MostrarTempos(){
+
+    mili1_txt[10] = EEPROM_Read(1);          //Pega os milisegundos da eeprom
+    segundo1_txt[100] =  EEPROM_Read(256);  //Pega os segundos da eeprom
+
+    Ltrim(mili1_txt);                       // Retira os espaços
+    Ltrim(segundo1_txt);                    // Retira os espaços
+
+    Lcd_Out(1,8,segundo1_txt);
+    Lcd_Chr_CP('.');
+    Lcd_Out(1,12,mili1_txt);
+
+}
+
+void interrupt_1(void){
+
+        if (PORTB.RB1 == 0 || PORTB.RB2 == 0){     // Se precionado RB2 ou RB1
+
+                while(pausar < 1){                // enquanto pausar menor que zero fica no loop até ser precionado RB2
+
+                        if (PORTB.RB2 == 0){        // Se for precionado RB2 da continuidade
+                                pausar = 2;         // Seta pausar como 2 para sair do While
+                                INTCON.INTF = 0;    // Limpa a flag de interrupção
+                        }
+                INTCON.INTF = 0;                      // Limpa a flag de interrupção
+                }
+        }
+
+      pausar = 0;                             // Seta pausar igual a zera para poder pausar o sistema
+}
+
+void interrupt(void) {                      // Funcao de interrupcao
+
+        interrupt_1();      // Função Interrupção para RB0 e RB2
+
+}
+
+
+
+void MostrarSegundo(int seg){
+
+    WordToStr(seg,segundo_txt);             // Converte Int para String
+    Lcd_out(2,7,segundo_txt);               // Mostra segundo no LCD
+
+}
+
+
+void MostrarMilisegundos(int milisegundo){
+
+           WordToStr(milisegundo,miliSegundo_txt);    // Converte Int para String
+           Lcd_out(2,12,'.');
+           Lcd_out(2,12,miliSegundo_txt);             // Mostra milisegundo no LCD
+           milisegundo++;                             // Acrescenta +1 ao milisegundo
+
+}
+
+void esperaMilisegundo(){
+
+         //Timer1 Registers Prescaler= 8 - TMR1 Preset = 40536 - Freq = 10.00 Hz - Period = 0.100000 seconds
+         T1CON.T1CKPS1 = 1;            // bits 5-4  Prescaler Rate Select bits
+         T1CON.T1CKPS0 = 1;            // bit 4
+         T1CON.T1OSCEN = 1;            // bit 3 Timer1 Oscillator Enable Control bit 1 = on
+         T1CON.T1SYNC = 1;             // bit 2 Timer1 External Clock Input Synchronization Control bit...1 = Do not synchronize external clock input
+         T1CON.TMR1CS = 0;             // bit 1 Timer1 Clock Source Select bit...0 = Internal clock (FOSC/4)
+         T1CON.TMR1ON = 1;             // bit 0 enables timer
+         TMR1H = 158;                  // preset for timer1 MSB register
+         TMR1L = 88;                   // preset for timer1 LSB register
+         mili++;                       // Acrescenta +1 na variavel mili
+        
+         if (mili >= 100) {             // Se for 100 ou mais milisegundos
+           
+            mili = 0;                   // Zera a variavel
+            segundo++;                  // Acrescenta +1 para a variavel segundo
+            
+         }
+         
+         MostrarMilisegundos(mili);       // Mostra no LCD o milisegundo
+
+      }
+
+
+void main(){
+
+   TRISB = 0b11111111;
+   PORTB = 0b11111111;          // Defini como lógica invertida
+
+   ADCON1 = 0x07;   //0x8E or 0x07
+   LimparTela();                             // Limpa Tela
+
+   INTCON.GIE = 1;                           // Habilita os interruptores
+   INTCON.INTE = 1;                          // Habilita o RB0 como interruptor externo
+   INTCON.PEIE = 0;                          // Disabilita os interruptores externos
+   OPTION_REG.INTEDG = 0;                    // Interrupcao "FALLING" EDGE
+
+    while(1){
+
+          // Ao apertar RB1 Limpa tela e Reinicia o ~Cornometro~
+          if (PORTB.RB1 == 0){
+           
+           LimparTela();      // Limpa Tela
+           segundo = 0;       // zera variavel segundo
+
+           }
+           
+           // Ao aperta RB3 grava o tempo atual na eeprom e limpa tela e zera ~Cornometro~
+           if (PORTB.RB3 == 0){
+           EEPROM_Write(256,segundo1);        // Grava na posica 256 na eeprom o segundo
+           EEPROM_Write(1,mili1);             // Grava na posicao 1 na eeprom o milisegundo
+
+           LimparTela();                      // Limpa Tela
+           segundo = 0;                       // Zera segundo
+
+           MostrarTempos();                   // Mostrar os tempos, Segundo e milisegundo
+
+           }
+
+         esperaMilisegundo();                 // Espera 1 milisegundo
+         cont++;                              // Conta +1
+
+         if (cont == 100){                    // Se for maior igual a 100 mostra o segundo
+            MostrarSegundo(segundo);          // Mostra o segundo
+            cont = 0;                         // Zera o contador
+
+            }
+
+         }
+ }
